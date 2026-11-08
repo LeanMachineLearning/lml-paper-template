@@ -82,6 +82,9 @@ def workers_toml(rows: list[dict], paper: str, conf: str, source: str, prs: str,
             area = row["link"].split()[0]
             areas[area] = areas.get(area, False) or row["status"] == "proved"
     out = ["# Written by scripts/formalize.sh from PAPER_ROADMAP.md; do not edit.", "version = 1", ""]
+    # No soft pacing: the user asked for this formalization now, and the paper loop is not paced
+    # either. A worker still stops when the quota is used up.
+    pace = 'pace = "0:100"'
     for area, ready in sorted(areas.items()):
         out += [
             "[[workers]]",
@@ -92,6 +95,7 @@ def workers_toml(rows: list[dict], paper: str, conf: str, source: str, prs: str,
             f"roadmap_only = {toml_string(area)}",
             f"source = {toml_string(source)}",
             f"extra_roadmap_prompt = {toml_string(prompt(area, paper))}",
+            pace,
             "",
         ]
     prs = ",".join(p for p in prs.split(",") if p.strip())
@@ -101,6 +105,7 @@ def workers_toml(rows: list[dict], paper: str, conf: str, source: str, prs: str,
         f"enabled = {'true' if prs and not off else 'false'}",
         f"conf = {toml_string(conf)}",
         'only = ["rebase", "fix-ci", "fix", "review"]',
+        pace,
     ]
     if prs:
         out.append(f"env = {{ TAUCETI_PR = {toml_string(prs)} }}")
