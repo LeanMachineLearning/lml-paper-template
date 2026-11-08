@@ -17,8 +17,16 @@ lib=$(sed -n 's/^name = "\(.*\)"$/\1/p' lakefile.toml | head -1)
 mkdir -p .tauceti
 mode=${1:-all}
 
+# A sorry in the library. Only paths that exist go to grep: some greps (ugrep) fail on a missing
+# path even when another one matches.
+sorry_left() {
+  local paths=() p
+  for p in "$lib" "$lib.lean"; do [ -e "$p" ] && paths+=("$p"); done
+  [ ${#paths[@]} -gt 0 ] && grep -rqw --include='*.lean' "sorry" "${paths[@]}" 2> /dev/null
+}
+
 paper() {
-  if grep -rlw --include='*.lean' "sorry" "$lib" "$lib.lean" > /dev/null 2>&1; then
+  if sorry_left; then
     echo "not formalized: $lib still has sorry"
     return 1
   fi

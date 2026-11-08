@@ -48,11 +48,19 @@ workers() {
 
 if [ "${1:-}" = stop ]; then
   if [ -f "$state/loop.pid" ]; then
-    kill "$(cat "$state/loop.pid")" 2>/dev/null || true
+    pid=$(cat "$state/loop.pid")
+    # The loop and its current round: the whole process group when the loop leads its own (a job
+    # of a terminal or of tmux), else the loop's children, then the loop.
+    if [ "$(ps -o pgid= -p "$pid" | tr -d ' ')" = "$pid" ]; then
+      kill -TERM -- "-$pid" 2>/dev/null || true
+    else
+      pkill -TERM -P "$pid" 2>/dev/null || true
+      kill -TERM "$pid" 2>/dev/null || true
+    fi
     rm -f "$state/loop.pid"
   fi
   workers --off
-  echo "Stopped the paper loop; the workers stop on the manager's next cycle."
+  echo "Stopped the paper loop and its round; the workers stop on the manager's next cycle."
   exit 0
 fi
 
@@ -66,6 +74,9 @@ if [ -f "$state/loop.pid" ] && kill -0 "$(cat "$state/loop.pid")" 2>/dev/null; t
 fi
 echo $$ > "$state/loop.pid"
 trap 'rm -f "$state/loop.pid"' EXIT
+# One Ctrl-C stops the script. claude and the Tau Ceti tools catch it and exit normally, and bash
+# goes on with the script after such a child unless the script traps the signal itself.
+trap 'echo; echo "$(date "+%F %T") interrupted"; exit 130' INT TERM
 
 # What the paper loop needs. The workers report their own problems in their logs
 # (`scripts/formalize.sh logs <id>`). `tauceti doctor` is not run: it checks LMLExplore's own setup,
@@ -144,7 +155,13 @@ milestone() {
   exit 0
 }
 
-sorry_left() { grep -rlw --include='*.lean' "sorry" "$lib" "$lib.lean" > /dev/null 2>&1; }
+# A sorry in the library. Only paths that exist go to grep: some greps (ugrep) fail on a missing
+# path even when another one matches.
+sorry_left() {
+  local paths=() p
+  for p in "$lib" "$lib.lean"; do [ -e "$p" ] && paths+=("$p"); done
+  [ ${#paths[@]} -gt 0 ] && grep -rqw --include='*.lean' "sorry" "${paths[@]}" 2> /dev/null
+}
 
 # Contributing, after the milestone: a round only when the paper's pull requests, LMLRoadmaps or
 # the items waiting for LMLExplore change; the workers answer the reviews.
