@@ -59,7 +59,10 @@ if ! tauceti doctor; then
   exit 1
 fi
 
-repo=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+# The paper's identity, from the header of PAPER_ROADMAP.md (set by init.sh): the GitHub
+# repository, or for a repository kept local, the GitHub login and the folder's name.
+repo=$(sed -n 's/^Paper: \([^ ]*\).*/\1/p' PAPER_ROADMAP.md | head -n 1)
+[ -n "$repo" ] || { echo "PAPER_ROADMAP.md has no 'Paper: <owner>/<repo>' header line" >&2; exit 1; }
 while true; do
   prs=$(gh pr list -R LeanMachineLearning/LMLExplore --state open \
           --search "\"Paper: $repo\" in:body" --json number -q 'map(.number) | join(",")')

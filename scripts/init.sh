@@ -24,11 +24,18 @@ cd "$root"
 [ -d PaperLib ] || { echo "this repository is already initialized" >&2; exit 1; }
 [ -z "$(git status --porcelain)" ] || { echo "commit or stash your changes first" >&2; exit 1; }
 
-nwo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || true)
-if [ -z "$nwo" ]; then
-  nwo=$(git remote get-url origin 2>/dev/null | sed -E 's#^(git@github\.com:|https://github\.com/)##; s#\.git$##' || true)
+# The paper's identity, <owner>/<repo>: the GitHub repository, or for a repository kept local,
+# your GitHub login and the folder's name. Pull requests to LMLExplore name the paper by it.
+nwo=""
+if git remote get-url origin >/dev/null 2>&1; then
+  nwo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || true)
+  [ -n "$nwo" ] || nwo=$(git remote get-url origin | sed -E 's#^(git@github\.com:|https://github\.com/)##; s#\.git$##')
+else
+  login=$(gh api user -q .login 2>/dev/null || true)
+  [ -n "$login" ] || { echo "no GitHub repository and no GitHub login: run gh auth login first" >&2; exit 1; }
+  nwo="$login/$(basename "$root")"
+  echo "no GitHub repository: this paper is kept local, as $nwo"
 fi
-[ -n "$nwo" ] || { echo "cannot tell the GitHub repository: create it first (gh repo create)" >&2; exit 1; }
 author=$(git config user.name || true)
 [ -n "$author" ] || author="<Author>"
 
