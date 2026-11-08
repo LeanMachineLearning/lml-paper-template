@@ -93,7 +93,7 @@ while true; do
     sleep 900
     continue
   fi
-  tail -n 3 "$log" | sed 's/^/  /'
+  tail -n 3 "$log" | grep -v "^Blocked:" | sed 's/^/  /'
   # Claude Code applies the permission list of .claude/settings.json only in a trusted folder.
   if grep -q "has not been trusted" "$log"; then
     stuck "Claude Code does not trust $root, so the rounds cannot build, edit or commit.
@@ -103,10 +103,15 @@ Run claude once in $root and accept the trust dialog."
     stuck "$(grep "^Setup problem:" "$log" | tail -n 1 | sed 's/^Setup problem: *//')"
   fi
   if grep -q "^Blocked:" "$log"; then
-    echo "  a headline result is blocked: see notes/paper-errata.md and decide what to do"
+    grep "^Blocked:" "$log" | sed 's/^/  /'
+    echo "  The rounds skip it until you decide. In another terminal: cd $root, run claude,"
+    echo "  and type /lml:formalize-paper decide. This loop can keep running meanwhile."
   fi
   if grep -q "^Nothing to do" "$log"; then
     idle=0
+    if grep -q 'status: "blocked"' formalization.yaml; then
+      echo "  Headline results are still blocked: run claude in $root and type /lml:formalize-paper decide."
+    fi
     if scripts/finished.sh; then
       break
     fi
