@@ -1,7 +1,7 @@
 /-
-Copyright (c) 2026 PAPER_AUTHOR. All rights reserved.
+Copyright (c) 2026 PAPERAUTHOR. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: PAPER_AUTHOR
+Authors: PAPERAUTHOR
 -/
 -- One import per file proving a headline result of formalization.yaml, for instance
 -- `import PaperLib.PaperResults.Theorem1`. Until then, the library's root.

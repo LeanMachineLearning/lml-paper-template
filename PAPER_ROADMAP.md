@@ -1,6 +1,6 @@
 # Paper roadmap: <title of the paper>
 
-Paper: PAPER_OWNER/PAPER_REPO · LMLExplore none · LMLRoadmaps none · Refreshed never
+Paper: PAPEROWNER/PAPERREPO · LMLExplore none · LMLRoadmaps none · Refreshed never
 
 ## Items
 

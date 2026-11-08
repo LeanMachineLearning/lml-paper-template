@@ -38,7 +38,7 @@ env = os.environ
 owner, repo = env["NWO"].split("/", 1)
 replacements = [
     ("PaperLib", env["LIB"]), ("PaperResults", env["PAPER"]), ("PAPERKEY", env["KEY"]),
-    ("PAPER_OWNER", owner), ("PAPER_REPO", repo), ("PAPER_AUTHOR", env["AUTHOR"]),
+    ("PAPEROWNER", owner), ("PAPERREPO", repo), ("PAPERAUTHOR", env["AUTHOR"]),
 ]
 files = subprocess.run(["git", "ls-files", "-z"], capture_output=True, text=True, check=True).stdout
 for path in filter(None, files.split("\0")):

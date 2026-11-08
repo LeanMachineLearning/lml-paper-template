@@ -5,18 +5,18 @@
 version: "v0.4"
 
 project:
-  name: "PAPER_REPO"
+  name: "PAPERREPO"
   description: >-
     <One paragraph: which paper, which results, on which libraries (LMLExplore, and through it
     LML, Tau Ceti and Mathlib), in which generality, and the two-phase plan (phase 1 sorry-ed
     headline statements with comparator challenges, phase 2 proofs).>
   authors:
-    - "PAPER_AUTHOR"
+    - "PAPERAUTHOR"
   responsible_maintainers:
-    - "PAPER_AUTHOR"
+    - "PAPERAUTHOR"
   license: "Apache-2.0"
-  repository: "https://github.com/PAPER_OWNER/PAPER_REPO"
-  blueprint: "https://PAPER_OWNER.github.io/PAPER_REPO/blueprint/"
+  repository: "https://github.com/PAPEROWNER/PAPERREPO"
+  blueprint: "https://PAPEROWNER.github.io/PAPERREPO/blueprint/"
 
 repository:
   role: "substantive-development"

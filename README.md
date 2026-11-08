@@ -20,7 +20,7 @@ The library here, PaperLib, builds as it is: this repository's CI checks the tem
 LMLExplore's current `main`. Everything between the `template` markers of this README is removed
 by `scripts/init.sh`.
 <!-- /template -->
-# PAPER_REPO
+# PAPERREPO
 
 A Lean 4 formalization of *<title of the paper>* (<authors>, <venue, year>), on top of
 [LMLExplore](https://github.com/LeanMachineLearning/LMLExplore), and so of
@@ -28,7 +28,7 @@ A Lean 4 formalization of *<title of the paper>* (<authors>, <venue, year>), on 
 and [Mathlib](https://github.com/leanprover-community/mathlib4). Made from
 [lml-paper-template](https://github.com/LeanMachineLearning/lml-paper-template).
 
-- Blueprint: https://PAPER_OWNER.github.io/PAPER_REPO/blueprint/
+- Blueprint: https://PAPEROWNER.github.io/PAPERREPO/blueprint/
 - The paper: `source/`. Errors found in it, with their corrections: `notes/paper-errata.md`.
 - The paper's results: `PaperLib/PaperResults/`, one file per result, listed with their status in
   `formalization.yaml`; comparator challenges in `comparator/`.

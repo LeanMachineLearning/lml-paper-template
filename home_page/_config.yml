@@ -1,10 +1,10 @@
 # Jekyll configuration of the home page, built by the docgen action.
-title: PAPER_REPO
-description: by PAPER_AUTHOR
+title: PAPERREPO
+description: by PAPERAUTHOR
 baseurl: ""
-url: "https://PAPER_OWNER.github.io/PAPER_REPO"
-github_username: PAPER_OWNER
-repository: PAPER_OWNER/PAPER_REPO
+url: "https://PAPEROWNER.github.io/PAPERREPO"
+github_username: PAPEROWNER
+repository: PAPEROWNER/PAPERREPO
 
 remote_theme: pages-themes/cayman@v0.2.0
 plugins:
