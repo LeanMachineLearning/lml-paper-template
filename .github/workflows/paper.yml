@@ -69,10 +69,17 @@ jobs:
           path: .lml-paper-template
 
       - name: Install elan
+        # Retried: the installer downloads elan from GitHub's releases, which sometimes time out.
         run: |
           set -euo pipefail
-          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
-            | sh -s -- -y --default-toolchain none
+          for attempt in 1 2 3 4; do
+            if curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+                | sh -s -- -y --default-toolchain none; then
+              break
+            fi
+            [ "$attempt" = 4 ] && exit 1
+            sleep $((attempt * 30))
+          done
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
       - name: Move to LMLExplore's current main
