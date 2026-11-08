@@ -1,0 +1,14 @@
+{
+  "PAPERKEY": {
+    "uri": "",
+    "citation": {
+      "id": "PAPERKEY",
+      "type": "article",
+      "title": "<title of the paper>",
+      "author": [{"family": "<family name>", "given": "<given name>"}],
+      "issued": {"date-parts": [[2026]]}
+    },
+    "identifiers": {},
+    "version": ""
+  }
+}

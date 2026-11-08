@@ -1,0 +1,28 @@
+% The printable version of the blueprint. It holds the \usepackage of the pdf version: a modern
+% TeX compiler (xeLaTeX) with unicode-math, expl3 for the dependency-graph macros, the AMS
+% packages, and links without rectangles.
+
+\documentclass[a4paper]{report}
+
+\usepackage{geometry}
+
+\usepackage{expl3}
+
+\usepackage{amssymb, amsthm, mathtools}
+\usepackage[unicode,colorlinks=true,linkcolor=blue,urlcolor=magenta, citecolor=blue]{hyperref}
+
+\usepackage[warnings-off={mathtools-colon,mathtools-overbracket}]{unicode-math}
+
+\input{macros/common}
+\input{macros/print}
+
+\title{<Title of the paper>}
+\author{PAPER_AUTHOR}
+
+\begin{document}
+\maketitle
+\input{content}
+
+\bibliographystyle{amsalpha}
+\bibliography{bib}
+\end{document}

@@ -1,0 +1,25 @@
+% The web version of the blueprint, with the AMS packages and the blueprint package.
+
+\documentclass{report}
+
+\usepackage{amssymb, amsthm, amsmath}
+\usepackage{hyperref}
+\usepackage[showmore, dep_graph]{blueprint}
+
+\input{macros/common}
+\input{macros/web}
+
+\home{https://PAPER_OWNER.github.io/PAPER_REPO}
+\github{https://github.com/PAPER_OWNER/PAPER_REPO}
+\dochome{https://PAPER_OWNER.github.io/PAPER_REPO/docs}
+
+\title{<Title of the paper>}
+\author{PAPER_AUTHOR}
+
+\begin{document}
+\maketitle
+\input{content}
+
+\bibliographystyle{amsalpha}
+\bibliography{bib}
+\end{document}

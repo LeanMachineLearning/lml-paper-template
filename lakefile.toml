@@ -1,0 +1,42 @@
+# A paper project on top of LMLExplore. LMLExplore brings Mathlib, Tau Ceti and LML at the versions
+# it pins: never require them here, or at other revisions (`scripts/check-pins.sh` checks).
+name = "PaperLib"
+defaultTargets = ["PaperLib"]
+lintDriver = "batteries/runLinter"
+
+[leanOptions]
+pp.unicode.fun = true
+autoImplicit = false
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+# LMLExplore's settings, which ForLMLExplore/ must meet. The two long-file options must agree, or
+# the linter asks for a `set_option` in every short file.
+weak.linter.style.header = true
+weak.linter.style.longFile = 1500
+weak.linter.style.longFileDefValue = 1500
+
+[[require]]
+name = "LMLExplore"
+git = "https://github.com/LeanMachineLearning/LMLExplore"
+rev = "main"
+
+[[require]]
+name = "checkdecls"
+git = "https://github.com/PatrickMassot/checkdecls.git"
+
+[[lean_lib]]
+name = "PaperLib"
+
+# Comparator (https://github.com/leanprover/comparator) challenge and solution modules for the
+# headline results listed in formalization.yaml; see comparator/README.md. One library with a stub
+# root: tools that import every library root (checkdecls) must not load the challenge modules,
+# which redeclare project and LMLExplore names, so those are globs, not roots. Add one
+# "Challenge_<name>" entry per line of comparator/targets.txt.
+[[lean_lib]]
+name = "Comparator"
+srcDir = "comparator"
+leanOptions = { weak.linter.mathlibStandardSet = false, weak.linter.style.header = false }
+globs = [
+  "Comparator",
+  "Solution",
+]

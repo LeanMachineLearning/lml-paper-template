@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/mathlib-initiative/formalization.yaml/main/schema/formalization.schema.json
+# formalization.yaml (v0.4): repo-root metadata for formalization projects.
+# See https://github.com/mathlib-initiative/formalization.yaml for the fields.
+
+version: "v0.4"
+
+project:
+  name: "PAPER_REPO"
+  description: >-
+    <One paragraph: which paper, which results, on which libraries (LMLExplore, and through it
+    LML, Tau Ceti and Mathlib), in which generality, and the two-phase plan (phase 1 sorry-ed
+    headline statements with comparator challenges, phase 2 proofs).>
+  authors:
+    - "PAPER_AUTHOR"
+  responsible_maintainers:
+    - "PAPER_AUTHOR"
+  license: "Apache-2.0"
+  repository: "https://github.com/PAPER_OWNER/PAPER_REPO"
+  blueprint: "https://PAPER_OWNER.github.io/PAPER_REPO/blueprint/"
+
+repository:
+  role: "substantive-development"
+
+sources:
+  - title: "<Paper title>"
+    authors:
+      - "<Paper author>"
+    id: "<Venue year, paper number or arXiv id, with the revision whose numbering the citations use>"
+    type: "conference-paper"
+    location: "<Which results of the paper are formalized; see status.scope>"
+    relationship: "formalizes"
+    license: ""
+    author_endorsement: "not-contacted"
+    note: >-
+      <Where the paper source lives (source/), that the blueprint is a derived artifact of this
+      project, and whether the formalizer is an author. Errors found in the paper are in
+      notes/paper-errata.md.>
+
+related_formalizations: []   # earlier or parallel formalizations of this paper, if any
+
+classification:
+  arxiv: ["<primary arXiv category>"]
+  msc2020:
+    - "<MSC code>"   # <meaning>
+
+status:
+  scope: >-
+    <Phase 1: list every headline result with its Lean name and blueprint label.
+    Phase 2: what is proved, what is not, and the dated history of major changes.>
+  sorry_count: 0
+  sorry_in_definitions: 0
+
+alignment:
+  namespace: "PaperLib"
+  note: >-
+    The full source-to-Lean map is the blueprint: each environment of blueprint/src/chapters/*.tex
+    carries a \lean{} tag. Only the headline statements are repeated here. Each has its Literature
+    Links relation, read "paper relation Lean": exactMatch, closeMatch, broadMatch (the Lean
+    statement is more general), narrowMatch (the paper's is) or hasPart; and its entry in
+    notes/paper-errata.md when the paper had to be corrected.
+  statements:
+    - source: "<blueprint label> — <Theorem 1 of the paper>"
+      lean: "PaperLib.<name>"
+      module: "PaperLib.PaperResults.<File>"
+      status: "stated"
+      relation: "exactMatch"
+      # erratum: "E1"

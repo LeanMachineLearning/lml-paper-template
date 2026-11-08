@@ -1,0 +1,30 @@
+name: CI
+
+# The checks and the website of this paper project. The steps are in lml-paper-template's shared
+# workflow, so that its fixes reach every paper project.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 4 * * 1'   # weekly, to notice when LMLExplore or a tool moves
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  paper:
+    uses: LeanMachineLearning/lml-paper-template/.github/workflows/paper.yml@main
+    with:
+      lib: PaperLib
+      # The template itself publishes nothing, and checks itself against LMLExplore's current main.
+      publish: ${{ github.event_name == 'push' && github.repository != 'LeanMachineLearning/lml-paper-template' }}
+      update-lmlexplore: ${{ github.repository == 'LeanMachineLearning/lml-paper-template' }}

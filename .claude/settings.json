@@ -1,0 +1,33 @@
+{
+  "extraKnownMarketplaces": {
+    "lml-claude": {
+      "source": { "source": "github", "repo": "LeanMachineLearning/lml-claude" },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": { "lml@lml-claude": true },
+  "permissions": {
+    "allow": [
+      "Edit",
+      "Write",
+      "Bash(lake:*)",
+      "Bash(git:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh repo fork:*)",
+      "Bash(gh repo view:*)",
+      "Bash(leanblueprint:*)",
+      "Bash(python3 scripts/:*)",
+      "Bash(scripts/:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(diff:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)"
+    ]
+  }
+}

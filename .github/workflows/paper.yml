@@ -1,0 +1,160 @@
+name: Paper project
+
+# The CI of a paper project made from lml-paper-template, called by the project's
+# .github/workflows/ci.yml. It lives here so that every paper project gets its fixes: the steps,
+# and the scripts they run, come from lml-paper-template at `template-ref`, and act on the paper
+# project's checkout.
+#
+# Build (Mathlib's and Tau Ceti's prebuilt files, warnings as errors), Mathlib's linters, the pins
+# (everything LMLExplore pins is at LMLExplore's revision), LMLExplore's rules on ForLMLExplore/,
+# the library root, the comparator challenges; then, when `publish` is set, the referee site, the
+# Literature Links annotations, the blueprint, and the deployment to GitHub Pages.
+
+on:
+  workflow_call:
+    inputs:
+      lib:
+        description: The paper project's Lean library
+        required: true
+        type: string
+      publish:
+        description: Publish the referee site's dataset, and deploy the website to GitHub Pages
+        required: false
+        default: false
+        type: boolean
+      update-lmlexplore:
+        description: Move to LMLExplore's current main first (lml-paper-template's own check)
+        required: false
+        default: false
+        type: boolean
+      template-ref:
+        description: The ref of lml-paper-template whose scripts to run
+        required: false
+        default: main
+        type: string
+
+jobs:
+  paper:
+    runs-on: ubuntu-latest
+    name: Build, check and publish
+    permissions:
+      contents: write   # the referee site's dataset release and provenance ledger
+      pages: write
+      id-token: write
+    env:
+      LIB: ${{ inputs.lib }}
+    steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.0
+        with:
+          tool-cache: false
+          android: true
+          dotnet: false
+          haskell: false
+          large-packages: false
+          docker-images: false
+          swap-storage: false
+
+      - name: Check out the paper project
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The referee site's provenance ledger uses `git blame`: it needs the whole history.
+          fetch-depth: 0
+
+      - name: Check out lml-paper-template's scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: LeanMachineLearning/lml-paper-template
+          ref: ${{ inputs.template-ref }}
+          path: .lml-paper-template
+
+      - name: Install elan
+        run: |
+          set -euo pipefail
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Move to LMLExplore's current main
+        if: inputs.update-lmlexplore
+        run: |
+          set -euo pipefail
+          lake update LMLExplore
+          cp .lake/packages/LMLExplore/lean-toolchain .
+
+      - name: Build
+        run: bash .lml-paper-template/scripts/build.sh "$LIB" --wfail
+
+      - name: Mathlib's linters
+        run: lake lint
+
+      - name: Pins are LMLExplore's
+        run: bash .lml-paper-template/scripts/check-pins.sh
+
+      - name: LMLExplore's rules on ForLMLExplore/
+        run: bash .lml-paper-template/scripts/check-forlmlexplore.sh
+
+      - name: The library root lists every module
+        run: lake exe mk_all --check --lib "$LIB"
+
+      # Keeps the challenges compiling against the current tree. checkdecls, in the blueprint step,
+      # imports every library root, so the Comparator library's stub root needs an olean by then;
+      # its real modules are globs, so that checkdecls never loads the challenges.
+      - name: Build the comparator challenges
+        run: lake build Comparator
+
+      # https://github.com/LeanTrustBuilders/referee-site: the dataset, extracted with the newest
+      # trust-extract release for the toolchain, published as the release dataset-<commit12>; the
+      # build recorded in the provenance ledger (branch trust-ledger); and the site.
+      - name: Referee site
+        id: referee
+        if: inputs.publish
+        continue-on-error: true
+        uses: LeanTrustBuilders/referee-site@main
+        with:
+          root: ${{ inputs.lib }}
+          extract-args: --upstream-closure term
+          check: meaning term
+          # An editorial claim: whoever publishes this site vouches for Mathlib and everything under it.
+          trust: mathlib
+          out: home_page/referee
+
+      # The citations of numbered results in the docstrings, as Literature Links annotations
+      # (https://github.com/mathlib-initiative/literature-links), written by LMLExplore's script at
+      # the pinned LMLExplore, with the relations of the headline results from formalization.yaml,
+      # and checked with the format's checker at the commit LMLExplore pins (v1.0.2).
+      - name: Literature links
+        if: inputs.publish && steps.referee.outcome == 'success'
+        continue-on-error: true
+        env:
+          DATASET: ${{ steps.referee.outputs.dataset }}
+        run: |
+          set -euo pipefail
+          out=home_page/literature
+          python3 .lake/packages/LMLExplore/scripts/literature/annotations.py --dataset "$DATASET" \
+            --bibliography literature/bibliography.json --out "$out"
+          python3 -m venv "$RUNNER_TEMP/literature-links"
+          "$RUNNER_TEMP/literature-links/bin/pip" install --quiet pyyaml \
+            "git+https://github.com/mathlib-initiative/literature-links@e7eeafb823eb3bc64a8ab2077cd3569f572d459f"
+          "$RUNNER_TEMP/literature-links/bin/python" .lml-paper-template/scripts/add-relations.py \
+            "$out/annotations.jsonl"
+          "$RUNNER_TEMP/literature-links/bin/literature-links" validate "$out/annotations.jsonl"
+
+      - name: Blueprint
+        uses: leanprover-community/docgen-action@56023ee2a4b3630c1071825be5bafdb43f540bbd # 2026-08-21
+        with:
+          blueprint: true
+          api-docs: false
+          homepage: home_page
+          build-page: false
+          deploy: false
+
+      - name: Upload the website
+        if: inputs.publish
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: home_page/
+
+      - name: Deploy to GitHub Pages
+        if: inputs.publish
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
