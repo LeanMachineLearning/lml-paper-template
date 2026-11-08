@@ -128,6 +128,15 @@ Run claude once in $root and accept the trust dialog."
   return 0
 }
 
+# The paper's website, when GitHub Pages serves one: the blueprint, the referee site and the
+# literature links, which CI builds on each push.
+site() {
+  local url
+  url=$(gh api "repos/$repo/pages" -q .html_url 2>/dev/null) || return 0
+  echo "The website, with the blueprint, the referee site and the literature links (once CI has run"
+  echo "on the last push): $url"
+}
+
 # Everything is merged: the final bump, then stop.
 finish() {
   echo "$(date '+%F %T') everything is contributed: the final bump"
@@ -136,6 +145,7 @@ finish() {
   fi
   workers --off
   echo "Done: the paper is formalized, and its contributions are in LMLExplore."
+  site
   exit 0
 }
 
@@ -147,6 +157,7 @@ milestone() {
   workers --off
   echo
   echo "The paper is formalized: every headline result is proved, and comparator verifies them."
+  site
   echo "Still to contribute to LMLExplore:"
   echo "$left" | sed 's/^/  /'
   echo "The workers are stopped. Run scripts/formalize.sh again to contribute these: it runs the"

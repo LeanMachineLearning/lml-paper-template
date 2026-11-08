@@ -28,7 +28,9 @@ A Lean 4 formalization of *<title of the paper>* (<authors>, <venue, year>), on 
 and [Mathlib](https://github.com/leanprover-community/mathlib4). Made from
 [lml-paper-template](https://github.com/LeanMachineLearning/lml-paper-template).
 
-- Blueprint: https://PAPEROWNER.github.io/PAPERREPO/blueprint/
+- Website: https://PAPEROWNER.github.io/PAPERREPO/, with the blueprint, the referee site and the
+  literature links (which declarations formalize which results of the paper). CI builds it on each
+  push to `main`; the literature links are only there, not in the repository.
 - The paper: `source/`. Errors found in it, with their corrections: `notes/paper-errata.md`.
 - The paper's results: `PaperLib/PaperResults/`, one file per result, listed with their status in
   `formalization.yaml`; comparator challenges in `comparator/`.

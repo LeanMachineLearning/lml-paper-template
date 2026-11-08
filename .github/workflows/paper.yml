@@ -142,7 +142,8 @@ jobs:
       # The citations of numbered results in the docstrings, as Literature Links annotations
       # (https://github.com/mathlib-initiative/literature-links), written by LMLExplore's script at
       # the pinned LMLExplore, with the relations of the headline results from formalization.yaml,
-      # and checked with the format's checker at the commit LMLExplore pins (v1.0.2).
+      # and checked with the format's checker at the commit LMLExplore pins (v1.0.2). The page that
+      # lists them is the paper's own: LMLExplore's script also writes one, for its own website.
       - name: Literature links
         if: steps.publish.outputs.publish == 'true' && steps.referee.outcome == 'success'
         continue-on-error: true
@@ -159,6 +160,9 @@ jobs:
           "$RUNNER_TEMP/literature-links/bin/python" .lml-paper-template/scripts/add-relations.py \
             "$out/annotations.jsonl"
           "$RUNNER_TEMP/literature-links/bin/literature-links" validate "$out/annotations.jsonl"
+          rm -f "$out/index.html"
+          "$RUNNER_TEMP/literature-links/bin/python" .lml-paper-template/scripts/literature-page.py \
+            "$out/annotations.jsonl" --out "$out/index.md"
 
       - name: Blueprint
         uses: leanprover-community/docgen-action@56023ee2a4b3630c1071825be5bafdb43f540bbd # 2026-08-21
