@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Usage: scripts/formalize.sh         run the rest of the formalization, once phase 1 is done
 #        scripts/formalize.sh stop    stop it, and its workers
+#        scripts/formalize.sh status  show the workers' state
+#        scripts/formalize.sh logs ID show a worker's log
 #
 # Run it in a terminal or tmux, outside any agent session, and leave it running. On your
 # subscription, it drives:
@@ -47,6 +49,10 @@ if [ "${1:-}" = stop ]; then
   exit 0
 fi
 
+# The workers' state, and one worker's log.
+if [ "${1:-}" = status ]; then tauceti workers --config "$cfg" status; exit; fi
+if [ "${1:-}" = logs ]; then tauceti workers --config "$cfg" logs "${2:?usage: formalize.sh logs <worker id>}"; exit; fi
+
 if [ -f "$state/loop.pid" ] && kill -0 "$(cat "$state/loop.pid")" 2>/dev/null; then
   echo "formalize.sh is already running (pid $(cat "$state/loop.pid"))" >&2
   exit 1
@@ -54,10 +60,11 @@ fi
 echo $$ > "$state/loop.pid"
 trap 'rm -f "$state/loop.pid"' EXIT
 
-if ! tauceti doctor; then
-  echo "tauceti doctor reported a problem: fix it, then run this script again." >&2
-  exit 1
-fi
+# What the paper loop needs. The workers report their own problems in their logs
+# (`scripts/formalize.sh logs <id>`). `tauceti doctor` is not run: it checks LMLExplore's own setup,
+# which only its maintainers can change.
+command -v claude > /dev/null || { echo "claude (Claude Code) is not on the PATH" >&2; exit 1; }
+gh auth status > /dev/null 2>&1 || { echo "gh is not logged in: run gh auth login" >&2; exit 1; }
 
 # The paper's identity, from the header of PAPER_ROADMAP.md (set by init.sh): the GitHub
 # repository, or for a repository kept local, the GitHub login and the folder's name.
