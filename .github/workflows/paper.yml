@@ -68,6 +68,18 @@ jobs:
           ref: ${{ inputs.template-ref }}
           path: .lml-paper-template
 
+      # A repository fresh from the template, before scripts/init.sh has named it, publishes nothing.
+      - name: Decide whether to publish
+        id: publish
+        env:
+          PUBLISH: ${{ inputs.publish }}
+        run: |
+          if [ "$PUBLISH" = true ] && [ ! -f scripts/init.sh ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install elan
         # Retried: the installer downloads elan from GitHub's releases, which sometimes time out.
         run: |
@@ -115,7 +127,7 @@ jobs:
       # build recorded in the provenance ledger (branch trust-ledger); and the site.
       - name: Referee site
         id: referee
-        if: inputs.publish
+        if: steps.publish.outputs.publish == 'true'
         continue-on-error: true
         uses: LeanTrustBuilders/referee-site@main
         with:
@@ -131,7 +143,7 @@ jobs:
       # the pinned LMLExplore, with the relations of the headline results from formalization.yaml,
       # and checked with the format's checker at the commit LMLExplore pins (v1.0.2).
       - name: Literature links
-        if: inputs.publish && steps.referee.outcome == 'success'
+        if: steps.publish.outputs.publish == 'true' && steps.referee.outcome == 'success'
         continue-on-error: true
         env:
           DATASET: ${{ steps.referee.outputs.dataset }}
@@ -157,11 +169,11 @@ jobs:
           deploy: false
 
       - name: Upload the website
-        if: inputs.publish
+        if: steps.publish.outputs.publish == 'true'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: home_page/
 
       - name: Deploy to GitHub Pages
-        if: inputs.publish
+        if: steps.publish.outputs.publish == 'true'
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
