@@ -166,7 +166,8 @@ jobs:
           blueprint: true
           api-docs: false
           homepage: home_page
-          build-page: false
+          # The Jekyll home page (home_page/index.md), the site's root, with links to the rest.
+          build-page: true
           deploy: false
 
       - name: Upload the website
