@@ -101,8 +101,9 @@ jobs:
           lake update LMLExplore
           cp .lake/packages/LMLExplore/lean-toolchain .
 
+      # Warnings are errors, except `declaration uses 'sorry'` while the formalization goes on.
       - name: Build
-        run: bash .lml-paper-template/scripts/build.sh "$LIB" --wfail
+        run: bash .lml-paper-template/scripts/check-build.sh "$LIB"
 
       - name: Mathlib's linters
         run: lake lint

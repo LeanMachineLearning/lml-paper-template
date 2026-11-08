@@ -16,5 +16,6 @@ load it before working here.
 - Library-shaped code goes to the library's `ForLMLExplore/` folder, under LMLExplore's rules; the
   paper's own results go to the paper's folder, one file per result.
 - Errors found in the paper go to `notes/paper-errata.md`.
-- Build with `scripts/build.sh`. Never require Mathlib, Tau Ceti or LML directly: they come from
-  LMLExplore, at its pins.
+- Build with `scripts/build.sh`, and check with `scripts/check-build.sh`, which fails on every
+  warning except `declaration uses 'sorry'` (`lake build --wfail` would fail on those too). Never
+  require Mathlib, Tau Ceti or LML directly: they come from LMLExplore, at its pins.
