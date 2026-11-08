@@ -103,6 +103,9 @@ def main() -> None:
                          a.get("relation") or ""))
 
     lib = Path(repo).name or "the project"
+    # Jekyll turns a relative link to a file into one from the domain's root, which misses the
+    # repository's part of the path: an absolute link, like those of the home page.
+    data = f"{{{{ site.url }}}}/{args.out.parent.name}/{args.annotations.name}"
     lines = [
         "---",
         "layout: default",
@@ -125,7 +128,7 @@ def main() -> None:
     lines += [
         "The same links, in the "
         "[Literature Links](https://github.com/mathlib-initiative/literature-links) format: "
-        f"[annotations.jsonl](annotations.jsonl) ({len(records)} annotations).",
+        f"[annotations.jsonl]({data}) ({len(records)} annotations).",
         "",
     ]
     # The paper first: the work with the most results.
