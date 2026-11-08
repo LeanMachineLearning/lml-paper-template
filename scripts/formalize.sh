@@ -14,7 +14,9 @@
 #   paper loop has proved, and one for the review, fixes and rebases of the paper's pull requests.
 #
 # It stops once every main result is proved, comparator passes and nothing is left to port, after
-# one final bump to the current LMLExplore. Logs go to .tauceti/.
+# one final bump to the current LMLExplore. It also stops, saying why, when the rounds cannot work:
+# Claude Code does not trust the folder (run `claude` in it once), a round ends with
+# `Setup problem: …`, or three rounds in a row commit nothing. Logs go to .tauceti/.
 set -euo pipefail
 
 root="$(git rev-parse --show-toplevel)"
@@ -70,6 +72,14 @@ gh auth status > /dev/null 2>&1 || { echo "gh is not logged in: run gh auth logi
 # repository, or for a repository kept local, the GitHub login and the folder's name.
 repo=$(sed -n 's/^Paper: \([^ ]*\).*/\1/p' PAPER_ROADMAP.md | head -n 1)
 [ -n "$repo" ] || { echo "PAPER_ROADMAP.md has no 'Paper: <owner>/<repo>' header line" >&2; exit 1; }
+# Stop rather than spend rounds on a setup the rounds cannot fix. The workers keep running;
+# `scripts/formalize.sh stop` stops them too.
+stuck() {
+  echo "$(date '+%F %T') stopped: $1" >&2
+  echo "Fix it, then run scripts/formalize.sh again. The round logs are in $state/." >&2
+  exit 1
+}
+idle=0   # rounds in a row that committed nothing
 while true; do
   prs=$(gh pr list -R LeanMachineLearning/LMLExplore --state open \
           --search "\"Paper: $repo\" in:body" --json number -q 'map(.number) | join(",")')
@@ -77,20 +87,38 @@ while true; do
 
   log="$state/round-$(date +%Y%m%d-%H%M%S).log"
   echo "$(date '+%F %T') round, log in $log"
+  before=$(git rev-parse HEAD)
   if ! claude -p "/lml:formalize-paper round" > "$log" 2>&1; then
     echo "  the round failed (a usage limit?); retrying in 15 minutes"
     sleep 900
     continue
   fi
   tail -n 3 "$log" | sed 's/^/  /'
+  # Claude Code applies the permission list of .claude/settings.json only in a trusted folder.
+  if grep -q "has not been trusted" "$log"; then
+    stuck "Claude Code does not trust $root, so the rounds cannot build, edit or commit.
+Run claude once in $root and accept the trust dialog."
+  fi
+  if grep -q "^Setup problem:" "$log"; then
+    stuck "$(grep "^Setup problem:" "$log" | tail -n 1 | sed 's/^Setup problem: *//')"
+  fi
   if grep -q "^Blocked:" "$log"; then
     echo "  a headline result is blocked: see notes/paper-errata.md and decide what to do"
   fi
   if grep -q "^Nothing to do" "$log"; then
+    idle=0
     if scripts/finished.sh; then
       break
     fi
     sleep 1800
+    continue
+  fi
+  # Every other round commits its job; three rounds without a commit are a problem to look at.
+  if [ "$(git rev-parse HEAD)" = "$before" ]; then
+    idle=$((idle + 1))
+    [ "$idle" -lt 3 ] || stuck "three rounds in a row committed nothing."
+  else
+    idle=0
   fi
 done
 
