@@ -2,10 +2,12 @@
 r"""Generate the comparator challenge files and configs for the headline results.
 
 For each declaration listed in `comparator/targets.txt` this runs challenge-gen
-(https://github.com/LeanTrustBuilders/challenge-gen) with `--import Mathlib`, which writes
+(https://github.com/LeanTrustBuilders/challenge-gen) with `--import LMLExplore --import Mathlib`,
+which writes
 
-1. the statement with `sorry`, and everything it rests on, the project's definitions and LML's,
-   copied verbatim from their sources, so that the file imports Mathlib alone;
+1. the statement with `sorry`, and the project's definitions it rests on, copied verbatim from
+   their sources; the file imports the LMLExplore and Mathlib modules it needs, whose definitions
+   are not copied;
 2. comparator's config for it, listing the theorems to check: the headline theorem, the lemmas
    the definitions use (left `sorry` in the challenge, proved by the solution), and the theorems
    Lean makes of the proofs inside definitions (`foo._proof_1`).
@@ -75,7 +77,8 @@ def main():
     open(decls, "w").write("".join(f"{LIB}.{t}\n" for t in targets))
     generated = os.path.join(work, "out")
     run = subprocess.run(
-        ["lake", "env", binary, "--root", LIB, "--import", "Mathlib", "--decls-file", decls,
+        ["lake", "env", binary, "--root", LIB, "--import", "LMLExplore", "--import", "Mathlib",
+         "--decls-file", decls,
          "--out", generated], cwd=ROOT, capture_output=True, text=True)
     sys.stderr.write(run.stderr)
     if run.returncode != 0:

@@ -7,9 +7,8 @@ without having to read or trust the Lean development in `PaperLib/`.
 **Status.** <Which challenges are proved, when `scripts/comparator-verify.sh` last passed and how
 (`--insecure` or sandboxed).>
 
-Each challenge is one self-contained file whose transitive imports resolve to Mathlib and Lean
-core only, the shape the [Palomar registry](https://palomar-registry.org/) enforces: no LMLExplore, no LML, no
-project modules, no sibling helpers.
+Each challenge is one file that imports LMLExplore and Mathlib modules only, no project modules
+and no sibling helpers.
 
 ## The trust story
 
@@ -20,9 +19,10 @@ config `<name>.json`; the list is `targets.txt`:
 |---|---|
 | Theorem 1 (<what it says>) | `<name>` |
 
-Each challenge states the theorem with `sorry`, with every definition the statement rests on
-copied verbatim from its source by [challenge-gen](https://github.com/LeanTrustBuilders/challenge-gen):
-the project's definitions and the LMLExplore, LML and Tau Ceti declarations they build on. A reader checks the *statement*
+Each challenge states the theorem with `sorry`, with every definition of the project that the
+statement rests on copied verbatim from its source by
+[challenge-gen](https://github.com/LeanTrustBuilders/challenge-gen); the definitions of
+LMLExplore, Tau Ceti and Mathlib are imported. A reader checks the *statement*
 (the challenge file) by hand and lets comparator check that the project proves exactly it, with
 no axioms beyond `propext`, `Classical.choice` and `Quot.sound`, the proofs replayed through the
 kernel. The config also lists the lemmas the definitions use, left `sorry` in the challenge and
