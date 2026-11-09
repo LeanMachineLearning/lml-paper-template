@@ -35,15 +35,24 @@ export TAUCETI_CONF=https://raw.githubusercontent.com/LeanMachineLearning/LMLExp
 ref=$(curl -fsSL https://raw.githubusercontent.com/LeanMachineLearning/lml-claude/main/worker.ref)
 tauceti() { uvx --from "git+https://github.com/TauCetiProject/TauCetiWorker@$ref" tauceti "$@"; }
 
+# The paper's own workers manager: a manager serves one configuration, so papers formalized at the
+# same time on one machine each need theirs. Its state and logs go to .tauceti/workers/, its sockets
+# to a short path (a socket path has at most 107 bytes).
+export TAUCETI_WORKERS_STATE_DIR="$state/workers"
+export TAUCETI_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}/tauceti-$(id -u)-$(printf %s "$root" | sha256sum | cut -c1-8)"
+
 # Write the workers' configuration from PAPER_ROADMAP.md (arguments: `--prs LIST` or `--off`),
-# and reconcile it when it changed. The manager also reloads the file on each of its cycles.
+# and reconcile it when it changed, or on the first call of a run (the manager may be gone, after a
+# reboot or a failed reconcile). The manager also reloads the file on each of its cycles.
+applied=""
 workers() {
   python3 scripts/workers-toml.py --conf "$TAUCETI_CONF" --source "$root" "$@" > "$cfg.new"
-  if cmp -s "$cfg.new" "$cfg"; then
+  if cmp -s "$cfg.new" "$cfg" && { [ -n "$applied" ] || [ "${1:-}" = --off ]; }; then
     rm -f "$cfg.new"
   else
     mv "$cfg.new" "$cfg"
-    tauceti workers --config "$cfg" apply
+    tauceti workers --config "$cfg" apply || { rm -f "$cfg"; return 1; }
+    applied=1
   fi
 }
 
