@@ -31,6 +31,10 @@ state="$root/.tauceti"
 mkdir -p "$state"
 cfg="$state/workers.toml"
 
+# After a round's last turn, `claude -p` waits 10 minutes for the agents the round started, then
+# stops them, and the round ends with nothing done: allow them two hours.
+export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=7200000
+
 export TAUCETI_CONF=https://raw.githubusercontent.com/LeanMachineLearning/LMLExplore/main/tauceti.toml
 ref=$(curl -fsSL https://raw.githubusercontent.com/LeanMachineLearning/lml-claude/main/worker.ref)
 tauceti() { uvx --from "git+https://github.com/TauCetiProject/TauCetiWorker@$ref" tauceti "$@"; }
