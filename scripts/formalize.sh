@@ -60,6 +60,12 @@ workers() {
   fi
 }
 
+# Turn the workers off and stop their manager, which would otherwise outlive the script, idle.
+workers_stop() {
+  workers --off
+  tauceti workers --config "$cfg" manager-stop > /dev/null 2>&1 || true
+}
+
 if [ "${1:-}" = stop ]; then
   if [ -f "$state/loop.pid" ]; then
     pid=$(cat "$state/loop.pid")
@@ -73,8 +79,8 @@ if [ "${1:-}" = stop ]; then
     fi
     rm -f "$state/loop.pid"
   fi
-  workers --off
-  echo "Stopped the paper loop and its round; the workers stop on the manager's next cycle."
+  workers_stop
+  echo "Stopped the paper loop, its round, the workers and their manager."
   exit 0
 fi
 
@@ -158,7 +164,7 @@ finish() {
     echo "the bump failed, see $state/bump.log" >&2
   fi
   scripts/literature-links.sh || echo "the literature links were not recorded" >&2
-  workers --off
+  workers_stop
   echo "Done: the paper is formalized, and its contributions are in LMLExplore."
   site
   exit 0
@@ -171,7 +177,7 @@ milestone() {
   scripts/literature-links.sh || echo "the literature links were not recorded" >&2
   local left
   if left=$(scripts/finished.sh contributions); then finish; fi
-  workers --off
+  workers_stop
   echo
   echo "The paper is formalized: every headline result is proved, and comparator verifies them."
   site
