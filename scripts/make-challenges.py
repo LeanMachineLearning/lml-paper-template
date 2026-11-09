@@ -2,12 +2,12 @@
 r"""Generate the comparator challenge files and configs for the headline results.
 
 For each declaration listed in `comparator/targets.txt` this runs challenge-gen
-(https://github.com/LeanTrustBuilders/challenge-gen) with `--import LMLExplore --import Mathlib`,
-which writes
+(https://github.com/LeanTrustBuilders/challenge-gen) with `--import` for each of LMLExplore, LML,
+Tau Ceti and Mathlib that the project uses, which writes
 
 1. the statement with `sorry`, and the project's definitions it rests on, copied verbatim from
-   their sources; the file imports the LMLExplore and Mathlib modules it needs, whose definitions
-   are not copied;
+   their sources; the file imports the modules of those libraries it needs, whose definitions are
+   not copied;
 2. comparator's config for it, listing the theorems to check: the headline theorem, the lemmas
    the definitions use (left `sorry` in the challenge, proved by the solution), and the theorems
    Lean makes of the proofs inside definitions (`foo._proof_1`).
@@ -38,6 +38,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LIB = re.search(r'^name = "([^"]+)"', open(os.path.join(ROOT, "lakefile.toml")).read(), re.M).group(1)
 CACHE = os.path.expanduser(f"~/.cache/{LIB}")
 CHALLENGE_GEN_REPO = "https://github.com/LeanTrustBuilders/challenge-gen"
+#: The libraries a challenge imports instead of copying their definitions, when the project uses
+#: them.
+IMPORTED = ["LMLExplore", "LeanMachineLearning", "TauCeti", "Mathlib"]
 
 
 def build_challenge_gen():
@@ -76,13 +79,25 @@ def main():
     decls = os.path.join(work, "targets.txt")
     open(decls, "w").write("".join(f"{LIB}.{t}\n" for t in targets))
     generated = os.path.join(work, "out")
-    run = subprocess.run(
-        ["lake", "env", binary, "--root", LIB, "--import", "LMLExplore", "--import", "Mathlib",
-         "--decls-file", decls,
-         "--out", generated], cwd=ROOT, capture_output=True, text=True)
+    # The libraries whose definitions the challenges import rather than copy: those of IMPORTED
+    # that the library uses. challenge-gen refuses a prefix with no module in the environment (a
+    # paper on LML that does not import LMLExplore yet), and the run is retried without it.
+    imported = list(IMPORTED)
+    while True:
+        cmd = ["lake", "env", binary, "--root", LIB]
+        for prefix in imported:
+            cmd += ["--import", prefix]
+        run = subprocess.run(cmd + ["--decls-file", decls, "--out", generated],
+                             cwd=ROOT, capture_output=True, text=True)
+        missing = re.search(r"no module under (\S+), given to --import", run.stderr + run.stdout)
+        if run.returncode != 0 and missing and missing.group(1) in imported:
+            imported.remove(missing.group(1))
+            continue
+        break
     sys.stderr.write(run.stderr)
     if run.returncode != 0:
         sys.exit(f"challenge-gen failed:\n{run.stdout}")
+    print(f"the challenges import {', '.join(imported)}")
 
     os.makedirs(out_dir, exist_ok=True)
     unchecked = []
