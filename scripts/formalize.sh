@@ -104,6 +104,12 @@ trap 'echo; echo "$(date "+%F %T") interrupted"; exit 130' INT TERM
 command -v claude > /dev/null || { echo "claude (Claude Code) is not on the PATH" >&2; exit 1; }
 gh auth status > /dev/null 2>&1 || { echo "gh is not logged in: run gh auth login" >&2; exit 1; }
 
+# The rounds use the lml plugin installed for this folder, which Claude Code updates only when an
+# interactive session starts here: bring it to the plugin's current version.
+claude plugin marketplace update lml-claude > /dev/null 2>&1 || true
+claude plugin update lml@lml-claude --scope project > /dev/null 2>&1 \
+  || echo "could not update the lml plugin; the rounds use the installed version" >&2
+
 # The paper's identity, from the header of PAPER_ROADMAP.md (set by init.sh): the GitHub
 # repository, or for a repository kept local, the GitHub login and the folder's name.
 repo=$(sed -n 's/^Paper: \([^ ]*\).*/\1/p' PAPER_ROADMAP.md | head -n 1)
