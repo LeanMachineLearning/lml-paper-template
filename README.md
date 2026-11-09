@@ -30,7 +30,8 @@ and [Mathlib](https://github.com/leanprover-community/mathlib4). Made from
 
 - Website: https://PAPEROWNER.github.io/PAPERREPO/, with the blueprint, the referee site and the
   literature links (which declarations formalize which results of the paper). CI builds it on each
-  push to `main`; the literature links are only there, not in the repository.
+  push to `main`. `scripts/formalize.sh` also commits the literature links, as
+  `literature/annotations.jsonl`, when the paper is formalized and after the final bump.
 - The paper: `source/`. Errors found in it, with their corrections: `notes/paper-errata.md`.
 - The paper's results: `PaperLib/PaperResults/`, one file per result, listed with their status in
   `formalization.yaml`; comparator challenges in `comparator/`.

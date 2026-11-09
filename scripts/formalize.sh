@@ -15,9 +15,10 @@
 #   paper loop has proved, and one for the review, fixes and rebases of the paper's pull requests.
 #
 # It stops, with its workers, once the paper is formalized: no `sorry` is left and comparator verifies
-# every headline result. It then says what is still to contribute to LMLExplore. Run it again to
-# contribute that: the workers run, a round runs when the paper's pull requests or LMLRoadmaps
-# change, and once everything is merged one final bump moves the paper to the current LMLExplore.
+# every headline result. It then commits the paper's literature links (scripts/literature-links.sh)
+# and says what is still to contribute to LMLExplore. Run it again to contribute that: the workers
+# run, a round runs when the paper's pull requests or LMLRoadmaps change, and once everything is
+# merged one final bump moves the paper to the current LMLExplore, and the links are committed again.
 #
 # It also stops, saying why, when the rounds cannot work: Claude Code does not trust the folder (run
 # `claude` in it once), a round ends with `Setup problem: …`, or three rounds in a row commit
@@ -143,6 +144,7 @@ finish() {
   if ! claude -p "/lml:formalize-paper bump" > "$state/bump.log" 2>&1; then
     echo "the bump failed, see $state/bump.log" >&2
   fi
+  scripts/literature-links.sh || echo "the literature links were not recorded" >&2
   workers --off
   echo "Done: the paper is formalized, and its contributions are in LMLExplore."
   site
@@ -152,6 +154,8 @@ finish() {
 # The paper is formalized: stop, with the workers, and say what is left to contribute.
 milestone() {
   git rev-parse HEAD > "$state/formalized"
+  # The links of the formalized paper, in literature/annotations.jsonl, once CI has published them.
+  scripts/literature-links.sh || echo "the literature links were not recorded" >&2
   local left
   if left=$(scripts/finished.sh contributions); then finish; fi
   workers --off
