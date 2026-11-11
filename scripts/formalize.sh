@@ -13,6 +13,8 @@
 # - Tau Ceti workers (https://github.com/TauCetiProject/TauCetiWorker), as managed workers: one per
 #   LMLRoadmaps area with `target` items in PAPER_ROADMAP.md, porting to LMLExplore the items the
 #   paper loop has proved, and one for the review, fixes and rebases of the paper's pull requests.
+#   A porting worker runs only while an item is ready to port: proved, and with no pull request
+#   yet. The script checks that every 30 seconds.
 #
 # It stops, with its workers, once the paper is formalized: no `sorry` is left and comparator verifies
 # every headline result. It then commits the paper's literature links (scripts/literature-links.sh)
@@ -45,23 +47,40 @@ tauceti() { uvx --from "git+https://github.com/TauCetiProject/TauCetiWorker@$ref
 export TAUCETI_WORKERS_STATE_DIR="$state/workers"
 export TAUCETI_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}/tauceti-$(id -u)-$(printf %s "$root" | sha256sum | cut -c1-8)"
 
-# Write the workers' configuration from PAPER_ROADMAP.md (arguments: `--prs LIST` or `--off`),
-# and reconcile it when it changed, or on the first call of a run (the manager may be gone, after a
-# reboot or a failed reconcile). The manager also reloads the file on each of its cycles.
+# Write the workers' configuration from the committed PAPER_ROADMAP.md, which the workers port from
+# (arguments: `--prs LIST --ported LIST`, or `--off`), and reconcile it when it changed, or on the
+# first call of a run (the manager may be gone, after a reboot or a failed reconcile). The manager
+# also reloads the file on each of its cycles. It stops a worker at once when its block changes, so
+# a worker in the middle of a run keeps its block until it is between runs (workers-toml.py).
 applied=""
 workers() {
-  python3 scripts/workers-toml.py --conf "$TAUCETI_CONF" --source "$root" "$@" > "$cfg.new"
-  if cmp -s "$cfg.new" "$cfg" && { [ -n "$applied" ] || [ "${1:-}" = --off ]; }; then
-    rm -f "$cfg.new"
+  local new
+  new=$(mktemp "$cfg.XXXXXX")
+  git show HEAD:PAPER_ROADMAP.md | python3 scripts/workers-toml.py --roadmap - --conf "$TAUCETI_CONF" \
+    --source "$root" --current "$cfg" --state-dir "$TAUCETI_WORKERS_STATE_DIR" "$@" > "$new" \
+    || { rm -f "$new"; return 1; }
+  if cmp -s "$new" "$cfg" && { [ -n "$applied" ] || [ "${1:-}" = --off ]; }; then
+    rm -f "$new"
   else
-    mv "$cfg.new" "$cfg"
+    mv "$new" "$cfg"
     tauceti workers --config "$cfg" apply || { rm -f "$cfg"; return 1; }
     applied=1
   fi
 }
 
+# The background loop that keeps the workers' configuration current (workers_watch, below). It
+# stops before any other change to the configuration, and with the script.
+watch_pid=""
+watch_stop() {
+  [ -n "$watch_pid" ] || return 0
+  kill "$watch_pid" 2> /dev/null || true
+  wait "$watch_pid" 2> /dev/null || true
+  watch_pid=""
+}
+
 # Turn the workers off and stop their manager, which would otherwise outlive the script, idle.
 workers_stop() {
+  watch_stop
   workers --off
   tauceti workers --config "$cfg" manager-stop > /dev/null 2>&1 || true
 }
@@ -93,7 +112,7 @@ if [ -f "$state/loop.pid" ] && kill -0 "$(cat "$state/loop.pid")" 2>/dev/null; t
   exit 1
 fi
 echo $$ > "$state/loop.pid"
-trap 'rm -f "$state/loop.pid"' EXIT
+trap 'watch_stop; rm -f "$state/loop.pid"' EXIT
 # One Ctrl-C stops the script. claude and the Tau Ceti tools catch it and exit normally, and bash
 # goes on with the script after such a child unless the script traps the signal itself.
 trap 'echo; echo "$(date "+%F %T") interrupted"; exit 130' INT TERM
@@ -118,6 +137,26 @@ lib=$(sed -n 's/^name = "\(.*\)"$/\1/p' lakefile.toml | head -1)
 open_prs() {
   gh pr list -R LeanMachineLearning/LMLExplore --state open \
     --search "\"Paper: $repo\" in:body" --json number -q 'map(.number) | join(",")'
+}
+# The items that an open or merged pull request of the paper names in its `Item:` line: they are
+# ported, or being ported. A pull request closed without merging makes its item ready again.
+ported_items() {
+  gh pr list -R LeanMachineLearning/LMLExplore --state all --limit 200 \
+    --search "\"Paper: $repo\" in:body" --json state,body -q '.[] | select(.state != "CLOSED") | .body' \
+    | tr -d '\r' | sed -n 's/^Item: *\(R[0-9][0-9]*\).*$/\1/p' | sort -u | paste -s -d , -
+}
+
+# Bring the workers' configuration up to date now, then keep it so every 30 seconds in the
+# background, until the next call: a porting worker opens its pull request in the middle of a
+# round, and should stop once it is between runs, instead of starting runs that find nothing to
+# port. Its output goes to .tauceti/workers-watch.log.
+workers_watch() {
+  watch_stop
+  workers --prs "$(open_prs)" --ported "$(ported_items)"
+  ( while sleep 30; do
+      workers --prs "$(open_prs)" --ported "$(ported_items)" || true
+    done >> "$state/workers-watch.log" 2>&1 ) &
+  watch_pid=$!
 }
 
 # Stop rather than spend rounds on a setup the rounds cannot fix. The workers keep running;
@@ -209,7 +248,7 @@ if [ -f "$state/formalized" ] && ! sorry_left; then
   echo "The paper is formalized; contributing what is left to LMLExplore."
   last=""
   while true; do
-    workers --prs "$(open_prs)"
+    workers_watch
     if scripts/finished.sh contributions > /dev/null; then finish; fi
     now=$( { gh pr list -R LeanMachineLearning/LMLExplore --state all \
                --search "\"Paper: $repo\" in:body" --json number,state -q '.[] | "\(.number) \(.state)"'
@@ -226,7 +265,7 @@ fi
 # Formalizing, until the milestone.
 idle=0   # rounds in a row that committed nothing
 while true; do
-  workers --prs "$(open_prs)"
+  workers_watch
   before=$(git rev-parse HEAD)
   round || continue
   if ! sorry_left; then
