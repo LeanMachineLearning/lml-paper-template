@@ -1,21 +1,19 @@
 #!/usr/bin/env python3
 """The Tau Ceti workers of this paper, read from PAPER_ROADMAP.md, for scripts/formalize.sh.
 
-    workers-toml.py --conf URL --source DIR --prs 231,240 --ported R3,R5   the workers.toml, on stdout
-    workers-toml.py --conf URL --source DIR --off                         the same workers, all disabled
-    workers-toml.py --pending                                             items still to be ported, one per line
+    workers-toml.py --conf URL --source DIR --ported R3,R5   the workers.toml, on stdout
+    workers-toml.py --conf URL --source DIR --off           the same workers, all disabled
+    workers-toml.py --pending                               items still to be ported, one per line
 
 `--roadmap -` reads PAPER_ROADMAP.md on stdin: formalize.sh passes the committed one, which is what
 the workers port from.
 
-The workers (https://github.com/TauCetiProject/TauCetiWorker, docs/workers.md):
-
-* one authoring worker per LMLRoadmaps area that has `target` items, enabled while one of them is
-  ready to port: `proved`, and named by no open or merged pull request of the paper (its `Item:`
-  line; `--ported` lists those items). It ports those items to LMLExplore, from the paper
-  repository given as its source;
-* one worker for the paper's open pull requests to LMLExplore (rebases, CI fixes, review fixes,
-  reviews), limited to them through TAUCETI_PR, and disabled when there is none.
+The workers (https://github.com/TauCetiProject/TauCetiWorker, docs/workers.md) are authoring
+workers, one per LMLRoadmaps area that has `target` items, enabled while one of them is ready to
+port: `proved`, and named by no open or merged pull request of the paper (its `Item:` line;
+`--ported` lists those items). Each ports those items to LMLExplore, from the paper repository
+given as its source. The paper runs no worker for its pull requests: LMLExplore's side reviews
+them and makes the changes they need.
 
 A worker in the middle of a run keeps its current block (`--current`, `--state-dir`): the manager
 stops a worker at once when its block changes, which would kill the agent's run. Its change is
@@ -122,7 +120,7 @@ def current_blocks(path: Path | None) -> dict[str, str]:
     return blocks
 
 
-def workers_toml(rows: list[dict], paper: str, conf: str, source: str, prs: str, ported: set[str],
+def workers_toml(rows: list[dict], paper: str, conf: str, source: str, ported: set[str],
                  off: bool, current: dict[str, str], state_dir: Path | None) -> str:
     base = slug(paper.split("/", 1)[1])
     areas: dict[str, bool] = {}
@@ -147,18 +145,6 @@ def workers_toml(rows: list[dict], paper: str, conf: str, source: str, prs: str,
             f"extra_roadmap_prompt = {toml_string(prompt(area, paper))}",
             pace,
         ])
-    prs = ",".join(p for p in prs.split(",") if p.strip())
-    block = [
-        "[[workers]]",
-        f"id = {toml_string(worker_id(base, 'prs'))}",
-        f"enabled = {'true' if prs and not off else 'false'}",
-        f"conf = {toml_string(conf)}",
-        'only = ["rebase", "fix-ci", "fix", "review"]',
-        pace,
-    ]
-    if prs:
-        block.append(f"env = {{ TAUCETI_PR = {toml_string(prs)} }}")
-    blocks.append(block)
     out = []
     for lines in blocks:
         text = "\n".join(lines)
@@ -166,7 +152,8 @@ def workers_toml(rows: list[dict], paper: str, conf: str, source: str, prs: str,
         if not off and wid in current and current[wid] != text and busy(state_dir, wid):
             text = current[wid]
         out.append(text)
-    return "# Written by scripts/formalize.sh from PAPER_ROADMAP.md; do not edit.\nversion = 1\n\n" + "\n\n".join(out) + "\n"
+    return ("# Written by scripts/formalize.sh from PAPER_ROADMAP.md; do not edit.\nversion = 1\n"
+            + "".join(f"\n{text}\n" for text in out))
 
 
 def main() -> None:
@@ -174,7 +161,6 @@ def main() -> None:
     parser.add_argument("--roadmap", default=str(ROOT / "PAPER_ROADMAP.md"), help="the roadmap, or - for stdin")
     parser.add_argument("--conf", help="the LMLExplore project configuration (tauceti.toml URL)")
     parser.add_argument("--source", help="the paper repository, as the authoring workers' source")
-    parser.add_argument("--prs", default="", help="the paper's open pull requests, comma-separated")
     parser.add_argument("--ported", default="", help="the items of the paper's open or merged pull requests")
     parser.add_argument("--current", help="the workers.toml in use, whose blocks busy workers keep")
     parser.add_argument("--state-dir", help="the workers manager's state directory (TAUCETI_WORKERS_STATE_DIR)")
@@ -191,8 +177,8 @@ def main() -> None:
     ported = {i.strip() for i in args.ported.split(",") if i.strip()}
     current = current_blocks(Path(args.current) if args.current else None)
     state_dir = Path(args.state_dir) if args.state_dir else None
-    print(workers_toml(rows, header_paper(text), args.conf, args.source, args.prs, ported, args.off,
-                       current, state_dir), end="")
+    print(workers_toml(rows, header_paper(text), args.conf, args.source, ported, args.off, current,
+                       state_dir), end="")
 
 
 if __name__ == "__main__":

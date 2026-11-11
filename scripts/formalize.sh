@@ -12,9 +12,9 @@
 #   formalize-paper skill of the lml plugin says what a round does;
 # - Tau Ceti workers (https://github.com/TauCetiProject/TauCetiWorker), as managed workers: one per
 #   LMLRoadmaps area with `target` items in PAPER_ROADMAP.md, porting to LMLExplore the items the
-#   paper loop has proved, and one for the review, fixes and rebases of the paper's pull requests.
-#   A porting worker runs only while an item is ready to port: proved, and with no pull request
-#   yet. The script checks that every 30 seconds.
+#   paper loop has proved. A worker runs only while an item is ready to port: proved, and with no
+#   pull request yet. The script checks that every 30 seconds. LMLExplore's side reviews the
+#   pull requests and makes the changes they need; the paper runs no worker for them.
 #
 # It stops, with its workers, once the paper is formalized: no `sorry` is left and comparator verifies
 # every headline result. It then commits the paper's literature links (scripts/literature-links.sh)
@@ -48,7 +48,7 @@ export TAUCETI_WORKERS_STATE_DIR="$state/workers"
 export TAUCETI_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}/tauceti-$(id -u)-$(printf %s "$root" | sha256sum | cut -c1-8)"
 
 # Write the workers' configuration from the committed PAPER_ROADMAP.md, which the workers port from
-# (arguments: `--prs LIST --ported LIST`, or `--off`), and reconcile it when it changed, or on the
+# (arguments: `--ported LIST`, or `--off`), and reconcile it when it changed, or on the
 # first call of a run (the manager may be gone, after a reboot or a failed reconcile). The manager
 # also reloads the file on each of its cycles. It stops a worker at once when its block changes, so
 # a worker in the middle of a run keeps its block until it is between runs (workers-toml.py).
@@ -134,10 +134,6 @@ claude plugin update lml@lml-claude --scope project > /dev/null 2>&1 \
 repo=$(sed -n 's/^Paper: \([^ ]*\).*/\1/p' PAPER_ROADMAP.md | head -n 1)
 [ -n "$repo" ] || { echo "PAPER_ROADMAP.md has no 'Paper: <owner>/<repo>' header line" >&2; exit 1; }
 lib=$(sed -n 's/^name = "\(.*\)"$/\1/p' lakefile.toml | head -1)
-open_prs() {
-  gh pr list -R LeanMachineLearning/LMLExplore --state open \
-    --search "\"Paper: $repo\" in:body" --json number -q 'map(.number) | join(",")'
-}
 # The items that an open or merged pull request of the paper names in its `Item:` line: they are
 # ported, or being ported. A pull request closed without merging makes its item ready again.
 ported_items() {
@@ -152,9 +148,9 @@ ported_items() {
 # port. Its output goes to .tauceti/workers-watch.log.
 workers_watch() {
   watch_stop
-  workers --prs "$(open_prs)" --ported "$(ported_items)"
+  workers --ported "$(ported_items)"
   ( while sleep 30; do
-      workers --prs "$(open_prs)" --ported "$(ported_items)" || true
+      workers --ported "$(ported_items)" || true
     done >> "$state/workers-watch.log" 2>&1 ) &
   watch_pid=$!
 }
@@ -243,7 +239,7 @@ sorry_left() {
 }
 
 # Contributing, after the milestone: a round only when the paper's pull requests, LMLRoadmaps or
-# the items waiting for LMLExplore change; the workers answer the reviews.
+# the items waiting for LMLExplore change. LMLExplore's side reviews the pull requests.
 if [ -f "$state/formalized" ] && ! sorry_left; then
   echo "The paper is formalized; contributing what is left to LMLExplore."
   last=""
