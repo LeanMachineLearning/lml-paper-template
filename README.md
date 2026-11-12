@@ -52,4 +52,6 @@ to `lake build`.
 The workflow is the `formalize-paper` skill of the `lml` Claude Code plugin
 ([lml-claude](https://github.com/LeanMachineLearning/lml-claude)). Phase 1 (outline, blueprint,
 statements) is done in a Claude Code session. After it, `scripts/formalize.sh`, in a terminal or
-tmux, proves the rest and sends the reusable parts to LMLExplore.
+tmux, proves the rest and sends the reusable parts to LMLExplore, with one agent or, as the end of
+phase 1 chose (`--agents N` changes it), several agents on independent areas of the blueprint, each
+in its own worktree under `.tauceti/slots/`.
