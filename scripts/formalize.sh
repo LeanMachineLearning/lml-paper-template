@@ -19,8 +19,9 @@
 # It stops, with its workers, once the paper is formalized: no `sorry` is left and comparator verifies
 # every headline result. It then commits the paper's literature links (scripts/literature-links.sh)
 # and says what is still to contribute to LMLExplore. Run it again to contribute that: the workers
-# run, a round runs when the paper's pull requests or LMLRoadmaps change, and once everything is
-# merged one final bump moves the paper to the current LMLExplore, and the links are committed again.
+# run, rounds run when the paper's pull requests or LMLRoadmaps change, until one finds nothing to
+# do, and once everything is merged one final bump moves the paper to the current LMLExplore, and
+# the links are committed again.
 #
 # It also stops, saying why, when the rounds cannot work: Claude Code does not trust the folder (run
 # `claude` in it once), a round ends with `Setup problem: …`, or three rounds in a row commit
@@ -163,6 +164,11 @@ stuck() {
   exit 1
 }
 
+# Whether the round of $log found nothing to do, even if it set the line in Markdown.
+nothing_to_do() {
+  grep -qE '^[[:space:]>*_`-]*Nothing to do' "$log"
+}
+
 # One round; its log is $log. Returns 1 when claude failed (a usage limit?) and it waited.
 round() {
   log="$state/round-$(date +%Y%m%d-%H%M%S).log"
@@ -238,11 +244,15 @@ sorry_left() {
   [ ${#paths[@]} -gt 0 ] && grep -rqw --include='*.lean' "sorry" "${paths[@]}" 2> /dev/null
 }
 
-# Contributing, after the milestone: a round only when the paper's pull requests, LMLRoadmaps or
-# the items waiting for LMLExplore change. LMLExplore's side reviews the pull requests.
+# Contributing, after the milestone: when the paper's pull requests, LMLRoadmaps or the items
+# waiting for LMLExplore change, rounds until one finds nothing to do. A round does one job, and
+# every such change calls for a refresh first: waiting for the next change after each round would
+# leave the later jobs, such as a refactor pull request, to no round at all. LMLExplore's side
+# reviews the pull requests.
 if [ -f "$state/formalized" ] && ! sorry_left; then
   echo "The paper is formalized; contributing what is left to LMLExplore."
   last=""
+  idle=0   # rounds in a row that committed nothing
   while true; do
     workers_watch
     if scripts/finished.sh contributions > /dev/null; then finish; fi
@@ -251,8 +261,21 @@ if [ -f "$state/formalized" ] && ! sorry_left; then
              git ls-remote https://github.com/LeanMachineLearning/LMLRoadmaps main
              python3 scripts/workers-toml.py --pending; } | sha256sum)
     if [ "$now" != "$last" ]; then
+      before=$(git rev-parse HEAD)
       round || continue
-      last=$now
+      if nothing_to_do; then
+        idle=0
+        last=$now
+      else
+        # The round did a job, and the next one may have another: run it now.
+        if [ "$(git rev-parse HEAD)" = "$before" ]; then
+          idle=$((idle + 1))
+          [ "$idle" -lt 3 ] || stuck "three rounds in a row committed nothing."
+        else
+          idle=0
+        fi
+        continue
+      fi
     fi
     sleep 1800
   done
@@ -270,7 +293,7 @@ while true; do
     stuck "no sorry is left, but comparator does not verify the headline results: see
 $state/comparator.log. A statement may differ from its challenge."
   fi
-  if grep -q "^Nothing to do" "$log"; then
+  if nothing_to_do; then
     idle=0
     if grep -q 'status: "blocked"' formalization.yaml; then
       echo "  Headline results are still blocked: run claude in $root and type /lml:formalize-paper decide."
