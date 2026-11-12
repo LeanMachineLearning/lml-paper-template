@@ -55,6 +55,12 @@ agents=$(cat "$state/agents" 2> /dev/null || echo 1)
 # stops them, and the round ends with nothing done: allow them two hours.
 export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=7200000
 
+# No one answers the permission prompts of `claude -p`, so in its default mode it refuses every
+# action that the permission list of .claude/settings.json does not allow: reading the Lake
+# packages from a slot, whose .lake/packages links outside it, the plugin's own files, or a
+# pipeline through sed or awk. The rounds and the bump run in auto mode instead, as an interactive
+# session does, where Claude Code's classifier approves the safe ones.
+
 export TAUCETI_CONF=https://raw.githubusercontent.com/LeanMachineLearning/LMLExplore/main/tauceti.toml
 ref=$(curl -fsSL https://raw.githubusercontent.com/LeanMachineLearning/lml-claude/main/worker.ref)
 tauceti() { uvx --from "git+https://github.com/TauCetiProject/TauCetiWorker@$ref" tauceti "$@"; }
@@ -200,7 +206,7 @@ nothing_to_do() {
 round() {
   log="$state/round-$(date +%Y%m%d-%H%M%S).log"
   echo "$(date '+%F %T') round, log in $log"
-  if ! claude -p "/lml:formalize-paper round" > "$log" 2>&1; then
+  if ! claude -p --permission-mode auto "/lml:formalize-paper round" > "$log" 2>&1; then
     echo "  the round failed (a usage limit?); retrying in 15 minutes"
     sleep 900
     return 1
@@ -234,7 +240,7 @@ site() {
 # Everything is merged: the final bump, then stop.
 finish() {
   echo "$(date '+%F %T') everything is contributed: the final bump"
-  if ! claude -p "/lml:formalize-paper bump" > "$state/bump.log" 2>&1; then
+  if ! claude -p --permission-mode auto "/lml:formalize-paper bump" > "$state/bump.log" 2>&1; then
     echo "the bump failed, see $state/bump.log" >&2
   fi
   scripts/literature-links.sh || echo "the literature links were not recorded" >&2
@@ -405,7 +411,8 @@ start_round() {
   slog[$k]="$state/round-$(date +%Y%m%d-%H%M%S)-$k.log"
   echo "$(date '+%F %T') round in slot $k, log in ${slog[$k]}"
   # The refactor pull requests' clone of LMLExplore is the main checkout's.
-  ( cd "$dir" && exec claude -p "/lml:formalize-paper round $k" --add-dir "$state/LMLExplore" ) \
+  ( cd "$dir" && exec claude -p --permission-mode auto "/lml:formalize-paper round $k" \
+      --add-dir "$state/LMLExplore" ) \
     > "${slog[$k]}" 2>&1 &
   rpid[$k]=$!
   while kill -0 "${rpid[$k]}" 2> /dev/null && [ ! -s "$dir/.tauceti/claim" ]; do sleep 10; done
